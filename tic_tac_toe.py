@@ -1,211 +1,184 @@
 import tkinter as tk
 import random
-import time
-labels = []
+widgets = []
 turn = 'X'
-computer = '0'
+radio_button = '0'
 winner = ''
 
 
 def comp_step():
-    # stupid move
+    # random step
     global turn
-    if computer == '1':
-        empty_labels = []
-        for i in range(0, 9):
-            if labels[i]['text'] == '':
-                empty_labels.append(labels[i])
-        r = random.randint(0, len(empty_labels)-1)
+    current_board = get_matrix_board()
+    if radio_button == '1':
         labels_unbind()
-        empty_labels[r].after(500, lambda: freeze_game(empty_labels[r]))
-        turn = 'X'
-    # smart move
-    if computer == '2':
-        current_board = [[], [], []]
-        for i in range(0, 9):
-            current_board[i//3].append(labels[i]['text'])
+        # delay between player step and computer step
+        widgets[11].after(500, lambda: freeze_game(random.choice(empty_cells(current_board))))
+    # smart step (minimax algorithm)
+    if radio_button == '2':
+        # checks if it's the computer's turn
         if turn == 'O':
             labels_unbind()
-            minimax_index = minimax(current_board, True)[1]
-            label = labels[minimax_index[0]*3 + minimax_index[1]]
-            label.after(500, lambda: freeze_game(label))
-            turn = 'X'
+            # gets the optimal index for computer step
+            index = minimax(current_board, True)[1]
+            # delay between player step and computer step
+            widgets[11].after(500, lambda: freeze_game(index))
 
 
+def get_matrix_board():
+    board = [[], [], []]
+    for i in range(9):
+        # converts the visual board to a matrix
+        board[i // 3].append(widgets[i]['text'])
+    return board
+
+
+def empty_cells(board):
+    # returns a indexes list of the empty cells
+    return [(row, column) for row in range(3) for column in range(3) if board[row][column] == '']
+
+
+# Computes all possible ways to proceed from the current state and selects the optimal way
 def minimax(board, min_max):
-    win_tie = minimax_win_tie(board)
-    if win_tie != 2:
-        return win_tie, None
-    empty = []
-    x_o = 'O' if min_max is True else 'X'
-    for row in range(3):
-        for column in range(3):
-            if board[row][column] == '':
-                empty.append((row, column))
+    result = win_draw(board)
+    if result != 2:
+        return result, None
     maximum = -1
     minimum = 1
     best_index = (0, 0)
-    for index in empty:
+    for index in empty_cells(board):
         new_board = [i.copy() for i in board]
-        new_board[index[0]][index[1]] = x_o
+        # puts in the board X or O according the turn
+        new_board[index[0]][index[1]] = 'O' if min_max is True else 'X'
+        # the recursive step
         result = minimax(new_board, not min_max)[0]
+        # computer turn
         if min_max is True:
-            if result == 1 or maximum == 1:
+            # improvement of the algorithm for saving unnecessary steps
+            if result == 1:
                 return 1, index
+            # Finds the maximum result out of the possible ways and its index (one step from the current board)
             if maximum <= result:
                 maximum = result
                 best_index = index
+        # player turn
         else:
-            if result == -1 or minimum == -1:
+            # improvement of the algorithm for saving unnecessary steps
+            if result == -1:
                 return -1, index
+            # Finds the minimum result out of the possible ways and its index (one step from the current board)
             if minimum >= result:
                 minimum = result
                 best_index = index
-    if min_max is True:
-        return maximum, best_index
-    else:
-        return minimum, best_index
+    # returns the result and the optimal index
+    return (maximum, best_index) if min_max is True else (minimum, best_index)
 
 
-def minimax_win_tie(board):
-    # chek win
+def win_draw(board):
+    # checks win
     for i in range(3):
+        # checks rows
         if board[i][0] == board[i][1] == board[i][2]:
-            if board[i][0] == 'O':
-                return 1
-            elif board[i][0] == 'X':
-                return -1
+            if board[i][0] != '':
+                return 1 if board[i][0] == 'O' else -1 if board[i][0] == 'X' else 2
+        # checks columns
         if board[0][i] == board[1][i] == board[2][i]:
-            if board[0][i] == 'O':
-                return 1
-            elif board[0][i] == 'X':
-                return -1
+            if board[0][i] != '':
+                return 1 if board[0][i] == 'O' else -1 if board[0][i] == 'X' else 2
+        # checks diagonals
         if (board[0][0] == board[1][1] == board[2][2]) or (board[2][0] == board[1][1] == board[0][2]):
-            if board[1][1] == 'O':
-                return 1
-            elif board[1][1] == 'X':
-                return -1
-    # check tie
-    if '' not in [board[i][j] for i in range(3) for j in range(3)]:
-        return 0
-    return 2
+            if board[1][1] != '':
+                return 1 if board[1][1] == 'O' else -1 if board[1][1] == 'X' else 2
+    # checks draw
+    return 0 if '' not in [board[i][j] for i in range(3) for j in range(3)] else 2
 
 
-def freeze_game(label):
-    label.config(text='O')
+def freeze_game(index):
+    # changes the pressed label to 'O'
+    widgets[index[0] * 3 + index[1]].config(text='O')
     labels_bind()
-    check_win_tie()
+    check_win_draw()
 
 
-def check_tie():
-    for i in range(0, 9):
-        if labels[i]['text'] == '':
-            return False
-    return True
-
-
-def check_win():
-    global winner
-    # check rows:
-    for i in range(0, 7, 3):
-        if labels[i]['text'] == labels[i + 1]['text'] == labels[i + 2]['text'] != '':
-            winner = labels[i]['text']
-    # check columns:
-    for i in range(3):
-        if labels[i]['text'] == labels[i + 3]['text'] == labels[i + 6]['text'] != '':
-            winner = labels[i]['text']
-    # check diagonals:
-    if labels[0]['text'] == labels[4]['text'] == labels[8]['text'] != '':
-        winner = labels[0]['text']
-    if labels[2]['text'] == labels[4]['text'] == labels[6]['text'] != '':
-        winner = labels[2]['text']
-    return winner
-
-
-def check_win_tie():
+def check_win_draw():
     global winner
     global turn
-    labels[9]['text'] = f'Turn {turn}'
-    win_tie = False
     if winner == '':
-        winner = check_win()
-    if winner != '':
-        labels[9]['text'] = f'The winner is {winner}'
-        win_tie = True
-    if check_tie() is True and winner == '':
-        labels[9]['text'] = 'Tie'
-        win_tie = True
-    return win_tie
+        current_board = get_matrix_board()
+        result = win_draw(current_board)
+        if result in [1, -1]:
+            winner = turn
+            widgets[9]['text'] = f'The winner is {winner}'
+            labels_unbind()
+        if result == 0:
+            widgets[9]['text'] = 'Draw'
+        if result == 2:
+            turn = 'O' if turn == 'X' else 'X'
+            widgets[9]['text'] = f'Turn {turn}'
+        return result
 
 
 def player_step(label):
-    global turn
     if label['text'] == '':
-        if turn == 'X':
-            label.config(text='X')
-            turn = 'O'
-        elif turn == 'O':
-            label.config(text='O')
-            turn = 'X'
-        if check_win_tie() is False:
+        label.config(text=turn)
+        # Checks if you are playing against the computer and checks if there is no winner or draw
+        if check_win_draw() == 2 and radio_button != '0':
             comp_step()
 
 
 def labels_bind():
-    labels[0].bind("<Button-1>", func=lambda x: player_step(labels[0]))
-    labels[1].bind("<Button-1>", func=lambda x: player_step(labels[1]))
-    labels[2].bind("<Button-1>", func=lambda x: player_step(labels[2]))
-    labels[3].bind("<Button-1>", func=lambda x: player_step(labels[3]))
-    labels[4].bind("<Button-1>", func=lambda x: player_step(labels[4]))
-    labels[5].bind("<Button-1>", func=lambda x: player_step(labels[5]))
-    labels[6].bind("<Button-1>", func=lambda x: player_step(labels[6]))
-    labels[7].bind("<Button-1>", func=lambda x: player_step(labels[7]))
-    labels[8].bind("<Button-1>", func=lambda x: player_step(labels[8]))
+    widgets[0].bind("<Button-1>", func=lambda x: player_step(widgets[0]))
+    widgets[1].bind("<Button-1>", func=lambda x: player_step(widgets[1]))
+    widgets[2].bind("<Button-1>", func=lambda x: player_step(widgets[2]))
+    widgets[3].bind("<Button-1>", func=lambda x: player_step(widgets[3]))
+    widgets[4].bind("<Button-1>", func=lambda x: player_step(widgets[4]))
+    widgets[5].bind("<Button-1>", func=lambda x: player_step(widgets[5]))
+    widgets[6].bind("<Button-1>", func=lambda x: player_step(widgets[6]))
+    widgets[7].bind("<Button-1>", func=lambda x: player_step(widgets[7]))
+    widgets[8].bind("<Button-1>", func=lambda x: player_step(widgets[8]))
 
 
 def labels_unbind():
-    for i in range(0, 9):
-        labels[i].bind("<Button-1>", func=lambda x: x)
+    for i in range(9):
+        widgets[i].bind("<Button-1>", func=lambda x: x)
 
 
-def labels_grid():
-    labels[0].grid(row=0, column=0)
-    labels[1].grid(row=0, column=1)
-    labels[2].grid(row=0, column=2)
-    labels[3].grid(row=1, column=0)
-    labels[4].grid(row=1, column=1)
-    labels[5].grid(row=1, column=2)
-    labels[6].grid(row=2, column=0)
-    labels[7].grid(row=2, column=1)
-    labels[8].grid(row=2, column=2)
-    labels[9].grid(row=0)
-    labels[10].grid(row=1)
+def grid_all():
+    for i in range(9):
+        # labels grid
+        widgets[i].grid(row=(i // 3), column=(i % 3))
+    widgets[9].grid(row=0)
+    widgets[10].grid(row=1)
+    for i in range(12, 15):
+        # radio buttons grid
+        widgets[i].grid(row=(i - 12), pady=5, padx=5, sticky='W')
 
 
 def new_game():
+    # reset all labels and global variables
     global winner
     global turn
-    global labels
+    global widgets
     winner = ''
     turn = 'X'
-    for i in range(0, 9):
-        labels[i]['text'] = ''
-    labels[9]['text'] = f'Turn {turn}'
+    labels_bind()
+    for i in range(9):
+        widgets[i]['text'] = ''
+    widgets[9]['text'] = f'Turn {turn}'
 
 
 def change_player(radio):
-    global computer
-    computer = radio.get()
+    global radio_button
+    radio_button = radio.get()
     new_game()
 
 
 def main():
-    global labels
+    global widgets
     root = tk.Tk()
+    root.wm_title('Tic Tac Toe')
     frame = tk.Frame(root)
-    FONT = ('Arial', 70)
-    FONT2 = ('Arial', 20)
-    FONT3 = ('Arial', 16)
+    FONT, FONT2, FONT3 = ('Arial', 70), ('Arial', 20), ('Arial', 16)
     top_left = tk.Label(frame, text='', font=FONT, width=2, height=1, relief='solid')
     top_middle = tk.Label(frame, text='', font=FONT, width=2, height=1, relief='solid')
     top_right = tk.Label(frame, text='', font=FONT, width=2, height=1, relief='solid')
@@ -227,12 +200,9 @@ def main():
                                         variable=radio, value=1)
     player_vs_smart_computer = tk.Radiobutton(frame3, text='Player vs Smart Computer',
                                               command=(lambda: change_player(radio)), variable=radio, value=2)
-    player_vs_player.grid(row=0, pady=5, padx=5, sticky='W')
-    player_vs_computer.grid(row=1, pady=5, padx=5, sticky='W')
-    player_vs_smart_computer.grid(row=2, pady=5, padx=5, sticky='W')
-    labels = [top_left, top_middle, top_right, middle_left, middle_middle, middle_right, bottom_left, bottom_middle,
-              bottom_right, turn_label, restart, root]
-    labels_grid()
+    widgets = [top_left, top_middle, top_right, middle_left, middle_middle, middle_right, bottom_left, bottom_middle,
+               bottom_right, turn_label, restart, root, player_vs_player, player_vs_computer, player_vs_smart_computer]
+    grid_all()
     labels_bind()
     frame.pack()
     frame2.pack()
