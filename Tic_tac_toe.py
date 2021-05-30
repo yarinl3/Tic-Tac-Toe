@@ -1,10 +1,7 @@
 import tkinter as tk
 import random
-widgets = []
-
 board_layout = []
 utilities = {}
-
 turn = 'X'
 radio_button = '0'
 winner = ''
@@ -12,14 +9,13 @@ count = 0
 
 
 def comp_step():
-    # random step
     global turn
     current_board = get_matrix_board()
+    # random step
     if radio_button == '1':
         labels_unbind()
         # delay between player step and computer step
         utilities['root'].after(500, lambda: freeze_game(random.choice(empty_cells(current_board))))
-        # widgets[11].after(500, lambda: freeze_game(random.choice(empty_cells(current_board))))
 
     # smart step (minimax algorithm)
     if radio_button == '2':
@@ -29,7 +25,6 @@ def comp_step():
             # gets the optimal index for computer step
             index = minimax(current_board, True)[1]
             # delay between player step and computer step
-            # widgets[11].after(500, lambda: freeze_game(index))
             utilities['root'].after(500, lambda: freeze_game(index))
 
 
@@ -46,8 +41,8 @@ def empty_cells(board):
     return [(row, column) for row in range(3) for column in range(3) if board[row][column] == '']
 
 
-# Computes all possible ways to proceed from the current state and selects the optimal way
 def minimax(board, min_max):
+    """Computes all possible ways to proceed from the current state and selects the optimal way."""
     result = win_draw(board)
     if result != 2:
         return result, None
@@ -118,23 +113,18 @@ def check_win_draw():
         if result in [1, -1]:
             winner = turn
             utilities['turn_label']['text'] = f'The winner is {winner}'
-            # widgets[9]['text'] = f'The winner is {winner}'
             labels_unbind()
         if result == 0:
             utilities['turn_label']['text'] = 'Draw'
-            # widgets[9]['text'] = 'Draw'
         if result == 2:
             turn = 'O' if turn == 'X' else 'X'
             utilities['turn_label']['text'] = f'Turn {turn}'
-            # widgets[9]['text'] = f'Turn {turn}'
-            count += 1
-            utilities['counter']['text'] = f'Moves: {count}'
-
+        count += 1
+        utilities['counter']['text'] = f'Moves: {count}'
         return result
 
 
 def player_step(label):
-
     if label['text'] == '':
         label.config(text=turn)
         # Checks if you are playing against the computer and checks if there is no winner or draw
@@ -143,48 +133,37 @@ def player_step(label):
 
 
 def labels_bind():
-    """
-    Enables clicking on the grid
-    """
+    """ Enables clicking on the grid """
     for i in range(len(board_layout)):
-        '''
-        You can pass every item in the loop by means of an argument with a default value.
-         The approach lets us save each item in that argument, 
-         so each lambda would use its own item.
-         ref: https://stackoverflow.com/questions/63172765/python-tkinter-bind-function-to-list-of-variables-in-a-for-loop
-        '''
-        board_layout[i].bind("<Button-1>", lambda event, item=i: player_step(board_layout[item]))
+        board_layout[i].bind("<Button-1>", func=lambda event, item=i: player_step(board_layout[item]))
 
 
 def labels_unbind():
+    """ Disables clicking on the grid """
     for i in range(len(board_layout)):
         board_layout[i].bind("<Button-1>", func=lambda x: x)
 
 
 def grid_all():
-    for i in range(9):
-        # labels grid
+    for i in range(len(board_layout)):
         board_layout[i].grid(row=(i // 3), column=(i % 3))
 
     utilities['turn_label'].grid(row=0)
     utilities['counter'].grid(row=1)
     utilities['restart'].grid(row=2)
 
-    # Sets the pvp buttons
-    q_list = []
-    for key in utilities.keys():
-        if str(key).startswith('p'):
-            q_list.append(key)
-            for index, k in enumerate(q_list):
-                utilities[k].grid(row=index, pady=5, padx=5, sticky='W')
+    # Sets the radio buttons (pv)
+    index = 0
+    for key in utilities:
+        if key.startswith('pv'):
+            utilities[key].grid(row=index, pady=5, padx=5, sticky='W')
+        index += 1
 
 
-# cleaned up
 def new_game():
     # reset all labels and global variables
     global winner
     global turn
-    global widgets
     global count
     global board_layout
     global utilities
@@ -192,10 +171,8 @@ def new_game():
     turn = 'X'
     count = 0
     labels_bind()
-    for i in range(9):
-        widgets[i]['text'] = ''
+    for i in range(len(board_layout)):
         board_layout[i]['text'] = ''
-    widgets[9]['text'] = f'Turn {turn}'
     utilities['turn_label']['text'] = f'Turn {turn}'
     utilities['counter']['text'] = f'Moves: {count}'
 
@@ -207,7 +184,6 @@ def change_player(radio):
 
 
 def main():
-    global widgets
     global count
     global board_layout
     global utilities
@@ -234,16 +210,12 @@ def main():
     radio = tk.StringVar()
     radio.set(0)
     frame3 = tk.Frame(root)
-
     player_vs_player = tk.Radiobutton(frame3, text='Player vs Player', command=(lambda: change_player(radio)),
                                       variable=radio, value=0)
     player_vs_computer = tk.Radiobutton(frame3, text='Player vs Computer', command=(lambda: change_player(radio)),
                                         variable=radio, value=1)
     player_vs_smart_computer = tk.Radiobutton(frame3, text='Player vs Smart Computer',
                                               command=(lambda: change_player(radio)), variable=radio, value=2)
-
-    board_layout = [top_left, top_middle, top_right, middle_left, middle_middle, middle_right, bottom_left,
-                    bottom_middle, bottom_right]
 
     utilities = {
         'turn_label': turn_label,
@@ -254,8 +226,10 @@ def main():
         'pvsc': player_vs_smart_computer,
         'counter': turn_count
     }
-    widgets = [top_left, top_middle, top_right, middle_left, middle_middle, middle_right, bottom_left, bottom_middle,
-               bottom_right, turn_label, restart, root, player_vs_player, player_vs_computer, player_vs_smart_computer]
+
+    board_layout = [top_left, top_middle, top_right, middle_left, middle_middle, middle_right, bottom_left,
+                    bottom_middle, bottom_right]
+
     grid_all()
     labels_bind()
     frame.pack()
